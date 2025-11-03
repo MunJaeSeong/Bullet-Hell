@@ -9,20 +9,9 @@ const ctx = canvas.getContext("2d");
 
 // 게임 상태 관리 변수
 let gameOver = false;     // 게임 종료 여부
-let startTime = Date.now();
-let elapsedTime = 0;
 let frameCount = 0;
 // 발사 타이밍 관리 (spawn는 player.spawnBullet())
 let lastBulletTime = Date.now();
-
-// 시간 표시 함수
-function drawTime() {
-  elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
-  ctx.fillStyle = "black";
-  ctx.font = "24px Arial";
-  ctx.textAlign = "left";
-  ctx.fillText(`시간: ${elapsedTime}초`, 10, 30);
-}
 
 // 게임 업데이트 루프
 function update() {
@@ -47,13 +36,12 @@ function update() {
   drawObstacles();
   // 플레이어 HUD (생명, 스킬)
   if (typeof drawPlayerHUD === 'function') drawPlayerHUD();
-  drawTime();
 
   // 충돌 검사
   for (let ob of obstacles) {
     if (checkCollision(player, ob)) {
       gameOver = true;
-      alert(`Game Over! 생존 시간: ${elapsedTime}초`);
+      alert(`Game Over!`);
       return;
     }
   }
