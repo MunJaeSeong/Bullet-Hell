@@ -12,6 +12,8 @@ let gameOver = false;     // 게임 종료 여부
 let frameCount = 0;
 // 발사 타이밍 관리 (spawn는 player.spawnBullet())
 let lastBulletTime = Date.now();
+// 게임 점수
+let score = 0;
 
 // 게임 업데이트 루프
 function update() {
@@ -65,6 +67,28 @@ function update() {
     lastBulletTime = now;
   }
   if (typeof updateBullets === 'function') updateBullets();
+
+  // --- 총알과 장애물 충돌 처리: 충돌 시 둘 다 제거하고 점수 추가 ---
+  if (typeof getBullets === 'function') {
+    const bullets = getBullets();
+    if (Array.isArray(bullets) && Array.isArray(obstacles)) {
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const ob = obstacles[i];
+        for (let j = bullets.length - 1; j >= 0; j--) {
+          const b = bullets[j];
+          if (checkCollision(b, ob)) {
+            // 제거
+            bullets.splice(j, 1);
+            obstacles.splice(i, 1);
+            // 점수 증가
+            score += 10;
+            // 이 장애물은 이미 제거했으므로 다음 장애물로
+            break;
+          }
+        }
+      }
+    }
+  }
 
   frameCount++;
   if (frameCount % 30 === 0) generateObstacle();
