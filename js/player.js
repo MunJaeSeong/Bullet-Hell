@@ -174,3 +174,51 @@ function resetPlayerStatus() {
   player.skills = 1;
   player.lives = 3;
 }
+
+// ------------------------------
+// Bullet (플레이어 발사체) 관리
+// ------------------------------
+// bullets 배열과 관련 함수들을 player.js에서 관리합니다.
+const bullets = []; // {x, y, radius, vy}
+
+// 플레이어 위치에서 총알을 생성
+function spawnBullet() {
+  if (typeof player === 'undefined') return;
+  // 총알 초기 위치: 플레이어 상단
+  const b = {
+    x: player.x,
+    y: player.y - player.radius - 6,
+    radius: 3,
+    vy: -6
+  };
+  bullets.push(b);
+  return b;
+}
+
+// 총알 위치 업데이트 및 화면 밖 제거
+function updateBullets() {
+  if (typeof canvas === 'undefined') return;
+  for (let b of bullets) {
+    b.y += b.vy;
+  }
+  // 화면 상단으로 나간 총알 제거
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    if (bullets[i].y + bullets[i].radius < 0) bullets.splice(i, 1);
+  }
+}
+
+// 총알 그리기 (global ctx 사용)
+function drawBullets() {
+  if (typeof ctx === 'undefined') return;
+  ctx.fillStyle = 'black';
+  for (let b of bullets) {
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// 총알 배열 얻기 (필요 시 외부에서 접근 가능)
+function getBullets() {
+  return bullets;
+}

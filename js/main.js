@@ -12,6 +12,8 @@ let gameOver = false;     // 게임 종료 여부
 let startTime = Date.now();
 let elapsedTime = 0;
 let frameCount = 0;
+// 발사 타이밍 관리 (spawn는 player.spawnBullet())
+let lastBulletTime = Date.now();
 
 // 시간 표시 함수
 function drawTime() {
@@ -40,6 +42,8 @@ function update() {
 
   // 게임 요소 그리기
   drawPlayer();
+  // 플레이어가 관리하는 총알 그리기
+  if (typeof drawBullets === 'function') drawBullets();
   drawObstacles();
   // 플레이어 HUD (생명, 스킬)
   if (typeof drawPlayerHUD === 'function') drawPlayerHUD();
@@ -56,6 +60,14 @@ function update() {
 
   // 화면 밖으로 나간 장애물 제거
   obstacles = obstacles.filter(ob => ob.y < canvas.height);
+
+  // --- 총알 생성 및 업데이트: player.js의 함수 사용 ---
+  const now = Date.now();
+  if (now - lastBulletTime >= 1000) {
+    if (typeof spawnBullet === 'function') spawnBullet();
+    lastBulletTime = now;
+  }
+  if (typeof updateBullets === 'function') updateBullets();
 
   frameCount++;
   if (frameCount % 30 === 0) generateObstacle();
