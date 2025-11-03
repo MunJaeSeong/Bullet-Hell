@@ -16,6 +16,18 @@ const player = {
   maxLives: 3      // 생명의 최대 보유 개수
 };
 
+// 플레이어 총알 업그레이드 상태
+player.bulletDamageMultiplier = 1.0; // 데미지 배율
+// 발사속도 관련: 발사 속도 배율과 기준 발사 간격(밀리초)
+player.fireRateMultiplier = 1.0;     // 발사속도 배율 (1.0 = 기본)
+player.baseFireIntervalMs = 1000;    // 기본 발사 간격(밀리초)
+player.fireIntervalMs = player.baseFireIntervalMs; // 현재 발사 간격(업그레이드 반영)
+player.maxFireRateMultiplier = 2.0;  // (옵션) UI에서 표시할 최대 배율
+player.bulletsPerShot = 1;           // 한 번에 발사되는 총알 개수
+// 업그레이드 카운트 및 한계값
+player.upgradeCounts = { damage: 0, speed: 0, count: 0 }; // 각 업그레이드가 몇 번 적용되었는지
+player.maxUpgrades = { damage: 9, speed: 9, count: 4 }; // 최대 적용 횟수 (count는 +1씩, 4번이면 1->5)
+
 // 현재 누른 키 상태를 저장하는 객체 (전역)
 const keysPressed = {};
 
@@ -39,7 +51,7 @@ document.addEventListener("keydown", function(e) {
       }
       if (used) {
         // 플레이어 전체 몬스터에 대미지 주는 함수 호출
-        if (typeof castGlobalDamage === 'function') castGlobalDamage(1000);
+        if (typeof castGlobalDamage === 'function') castGlobalDamage(100000);
       } else {
         // 스킬이 없으면 아무 동작 안 함 (추후 피드백 추가 가능)
       }
@@ -202,19 +214,72 @@ function resetPlayerStatus() {
 // ------------------------------
 // bullets 배열과 관련 함수들을 player.js에서 관리합니다.
 const bullets = []; // {x, y, radius, vy}
-const BULLET_DAMAGE = 200;
+const BULLET_DAMAGE = 200; // 기본 총알 대미지 (업그레이드 배율 적용 전)
+// 현재 탄환 대미지(업그레이드 적용)를 반환
+function getBulletDamage() {
+  return Math.max(1, Math.floor(BULLET_DAMAGE * (player.bulletDamageMultiplier || 1)));
+}
 // 플레이어 위치에서 총알을 생성
 function spawnBullet() {
   if (typeof player === 'undefined') return;
-  // 총알 초기 위치: 플레이어 상단
-  const b = {
-    x: player.x,
-    y: player.y - player.radius - 6,
-    radius: 3,
-    vy: -6
-  };
-  bullets.push(b);
-  return b;
+  // 기본 속도 (총알 발사 속도는 이제 발사 빈도로 제어됩니다)
+  const baseVy = -6;
+  const count = Math.max(1, Math.floor(player.bulletsPerShot || 1));
+  const created = [];
+  if (count === 1) {
+    const b = { x: player.x, y: player.y - player.radius - 6, radius: 3, vy: baseVy };
+    bullets.push(b);
+    created.push(b);
+  } else {
+    // 여러 발을 발사할 때는 약간의 각도(수평 분산)를 줌
+    const spread = Math.min(20, 6 * count); // 픽셀 단위 좌우 분산
+    for (let i = 0; i < count; i++) {
+      const t = (i / (count - 1)) - 0.5; // -0.5 .. 0.5
+      const bx = player.x + t * spread;
+      const b = { x: bx, y: player.y - player.radius - 6, radius: 3, vy: baseVy };
+      bullets.push(b);
+      created.push(b);
+    }
+  }
+  return created;
+}
+
+// 업그레이드 적용 헬퍼: 'damage'|'speed'|'count'
+function applyPlayerUpgrade(kind) {
+  if (!player) return false;
+  switch (kind) {
+    case 'damage': {
+      const curCount = (player.upgradeCounts && player.upgradeCounts.damage) || 0;
+      const maxCount = (player.maxUpgrades && player.maxUpgrades.damage) || 9;
+      if (curCount >= maxCount) return false;
+      // 적용
+      player.upgradeCounts.damage = curCount + 1;
+      player.bulletDamageMultiplier = (player.bulletDamageMultiplier || 1) * 1.5;
+      return true;
+    }
+    case 'speed': {
+      const curCount = (player.upgradeCounts && player.upgradeCounts.speed) || 0;
+      const maxCount = (player.maxUpgrades && player.maxUpgrades.speed) || 9;
+      if (curCount >= maxCount) return false;
+      // 업그레이드 카운트 증가
+      player.upgradeCounts.speed = curCount + 1;
+      // 발사속도(빈도) 배율을 늘리고, 그에 따라 발사 간격을 줄임
+      player.fireRateMultiplier = (player.fireRateMultiplier || 1) * 1.25;
+      // 발사 간격은 기본 간격을 배율로 나누어 계산 (최소값 보호)
+      player.fireIntervalMs = Math.max(50, Math.round(player.baseFireIntervalMs / player.fireRateMultiplier));
+      return true;
+    }
+    case 'count': {
+      const curCount = (player.upgradeCounts && player.upgradeCounts.count) || 0;
+      const maxCount = (player.maxUpgrades && player.maxUpgrades.count) || 4;
+      if (curCount >= maxCount) return false;
+      player.upgradeCounts.count = curCount + 1;
+      player.bulletsPerShot = Math.min((player.maxUpgrades && player.maxUpgrades.count) ? 1 + player.upgradeCounts.count : 5, 5);
+      return true;
+    }
+    default:
+      return false;
+  }
 }
 
 // 총알 위치 업데이트 및 화면 밖 제거
@@ -258,7 +323,17 @@ function castGlobalDamage(damage = 1000) {
       m.hp -= damage;
       if (m.hp <= 0) {
         monsters.splice(i, 1);
+        // 점수 보상 합산
+        if (typeof m.getReward === 'function') score += m.getReward(); else score += 10;
         killed++;
+        // 레벨업 대기열 업데이트
+        if (typeof Level !== 'undefined') {
+          const newLevel = Level.levelForScore(score);
+          if (newLevel > (typeof prevLevel !== 'undefined' ? prevLevel : 1)) {
+            pendingLevelUps += (newLevel - (typeof prevLevel !== 'undefined' ? prevLevel : 1));
+            prevLevel = newLevel;
+          }
+        }
       }
     } else {
       // hp가 없다면 즉시 제거
@@ -266,7 +341,6 @@ function castGlobalDamage(damage = 1000) {
       killed++;
     }
   }
-  // 스코어 처리: 전역 score 가 있으면 10점씩 증가
-  if (typeof score !== 'undefined' && killed > 0) score += 10 * killed;
+  // 기존 루틴: 이미 점수는 각 몬스터 삭제 시 합산됨
   return killed;
 }
