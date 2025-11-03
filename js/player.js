@@ -47,9 +47,13 @@ function drawPlayer() {
 // 플레이어 경계 제한 (캔버스 크기에 맞춰 클램프)
 function clampPlayerToCanvas() {
   if (typeof canvas === 'undefined') return;
+  // 좌우는 기존과 동일하게 가장자리에 붙지 않게 클램프
   if (player.x < player.radius) player.x = player.radius;
   if (player.x > canvas.width - player.radius) player.x = canvas.width - player.radius;
-  if (player.y < player.radius) player.y = player.radius;
+  // 상단 영역 제한: 캔버스 높이의 상단 60% 영역으로 진입 불가
+  const topLimit = canvas.height * 0.6 + player.radius;
+  if (player.y < topLimit) player.y = topLimit;
+  // 하단은 기존처럼 캔버스 바깥으로 나가지 않게 클램프
   if (player.y > canvas.height - player.radius) player.y = canvas.height - player.radius;
 }
 
