@@ -37,7 +37,9 @@ const keysPressed = {};
 
 // 키 누름: 상태를 true로 설정하고 기본 동작(스크롤 등)을 막음
 document.addEventListener("keydown", function(e) {
-  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+  // 지원할 키: ArrowLeft/ArrowRight/ArrowUp/ArrowDown, W/S (대소문자 구분 없이)
+  const allowed = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "w", "W", "s", "S"];
+  if (allowed.includes(e.key)) {
     e.preventDefault();
     keysPressed[e.key] = true;
   }
@@ -45,7 +47,8 @@ document.addEventListener("keydown", function(e) {
 
 // 키 뗌: 상태를 false로 설정
 document.addEventListener("keyup", function(e) {
-  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+  const allowed = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "w", "W", "s", "S"];
+  if (allowed.includes(e.key)) {
     keysPressed[e.key] = false;
   }
 });
@@ -144,13 +147,18 @@ function update() {
   // 이전 프레임의 그림을 모두 지움 (캔버스 전체를 투명하게)
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 키가 눌려있는 동안 프레임마다 플레이어 이동 처리
+  // 키가 눌려있는 동안 프레임마다 플레이어 이동 처리 (좌/우 및 상/하 지원)
   if (keysPressed["ArrowLeft"]) player.x -= player.speed;
   if (keysPressed["ArrowRight"]) player.x += player.speed;
+  // W/S 또는 화살표 위/아래로 상하 이동
+  if (keysPressed["ArrowUp"] || keysPressed["w"] || keysPressed["W"]) player.y -= player.speed;
+  if (keysPressed["ArrowDown"] || keysPressed["s"] || keysPressed["S"]) player.y += player.speed;
 
-  // 플레이어가 캔버스 밖으로 나가지 않도록 반지름 기준으로 범위 제한 (player.x는 중심)
+  // 플레이어가 캔버스 밖으로 나가지 않도록 반지름 기준으로 범위 제한 (player.x, player.y는 중심)
   if (player.x < player.radius) player.x = player.radius;
   if (player.x > canvas.width - player.radius) player.x = canvas.width - player.radius;
+  if (player.y < player.radius) player.y = player.radius;
+  if (player.y > canvas.height - player.radius) player.y = canvas.height - player.radius;
 
   // 게임 요소 그리기
   drawPlayer();      // 플레이어 그리기
