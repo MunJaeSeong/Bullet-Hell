@@ -41,6 +41,8 @@ function update() {
   // 게임 요소 그리기
   drawPlayer();
   drawObstacles();
+  // 플레이어 HUD (생명, 스킬)
+  if (typeof drawPlayerHUD === 'function') drawPlayerHUD();
   drawTime();
 
   // 충돌 검사
