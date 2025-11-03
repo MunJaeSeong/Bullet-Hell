@@ -37,12 +37,21 @@ function update() {
   // 플레이어 HUD (생명, 스킬)
   if (typeof drawPlayerHUD === 'function') drawPlayerHUD();
 
-  // 충돌 검사
-  for (let ob of obstacles) {
+  // 충돌 검사: 플레이어와 장애물
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const ob = obstacles[i];
     if (checkCollision(player, ob)) {
-      gameOver = true;
-      alert(`Game Over!`);
-      return;
+      // 충돌 발생: 생명 감소
+      const remaining = typeof loseLife === 'function' ? loseLife(1) : (player.lives = Math.max(0, player.lives - 1));
+      // 충돌한 장애물 제거
+      obstacles.splice(i, 1);
+      // 생명 소진 시 게임 오버
+      if (remaining <= 0) {
+        gameOver = true;
+        alert('Game Over!');
+        return;
+      }
+      // 플레이어는 즉시 계속 플레이 가능 (무적 처리 등은 추후 추가)
     }
   }
 
