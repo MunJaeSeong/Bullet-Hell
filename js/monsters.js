@@ -3,24 +3,24 @@
 // 장애물(몬스터) 관련 변수 및 함수
 // ========================================
 
-// 장애물 배열 (전역)
-let obstacles = [];
+// 몬스터 배열 (전역)
+let monsters = [];
 
 // 장애물 그리기 및 이동 함수 (전역 ctx 사용)
-function drawObstacles() {
+function drawMonsters() {
   if (typeof ctx === 'undefined') return;
-  obstacles.forEach(ob => {
+  monsters.forEach(ob => {
     ctx.fillStyle = "red";
     ctx.fillRect(ob.x, ob.y, ob.width, ob.height);
     ob.y += ob.speed;
   });
 }
 
-// 새로운 장애물 생성 함수
-function generateObstacle() {
+// 새로운 몬스터 생성 함수
+function generateMonster() {
   if (typeof canvas === 'undefined') return;
   const x = Math.random() * (canvas.width - 40);
-  obstacles.push({
+  monsters.push({
     x: x,
     y: 0,
     width: 40,
@@ -55,3 +55,45 @@ function checkCollision(a, b) {
          a.y < b.y + b.height &&
          a.y + a.height > b.y;
 }
+
+// ========================================
+
+// 이로운 몬스터 배열 (전역)
+let powerMonsters = [];
+
+// 이로운 몬스터 그리기 함수 (하트 또는 번개로 렌더)
+function drawPowerMonsters() {
+  if (typeof ctx === 'undefined') return;
+  powerMonsters.forEach(item => {
+    const cx = item.x + item.width / 2;
+    const cy = item.y + item.height / 2;
+    // 하트는 생명, 번개는 스킬
+    if (item.type === 'life') {
+      ctx.fillStyle = 'crimson';
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      // drawHeart(ctx, cx, cy, size)
+      drawHeart(ctx, cx, cy, Math.min(item.width, item.height) * 0.5, true);
+    } else {
+      ctx.fillStyle = 'dodgerblue';
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      drawBolt(ctx, cx, cy, Math.min(item.width, item.height) * 1.0, true);
+    }
+    item.y += item.speed;
+  });
+}
+
+// 새로운 이로운 몬스터 생성 함수
+function generatePowerMonster() {
+  if (typeof canvas === 'undefined') return;
+  const x = Math.random() * (canvas.width - 40);
+  const type = Math.random() < 0.5 ? 'life' : 'skill';
+  powerMonsters.push({
+    x: x,
+    y: 0,
+    width: 40,
+    height: 20,
+    speed: 2 + Math.random() * 2,
+    type: type
+  });
+}
+
