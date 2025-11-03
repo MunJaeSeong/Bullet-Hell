@@ -90,12 +90,22 @@ function update() {
         for (let j = bullets.length - 1; j >= 0; j--) {
           const b = bullets[j];
           if (checkCollision(b, ob)) {
-            // 제거
-            bullets.splice(j, 1);
-            monsters.splice(i, 1);
-            // 점수 증가
-            score += 10;
-            // 이 몬스터는 이미 제거했으므로 다음 몬스터로
+            // 총알이 적에게 데미지
+            if (typeof ob.hp === 'number') {
+              ob.hp -= BULLET_DAMAGE;
+              // 총알은 항상 소모
+              bullets.splice(j, 1);
+              if (ob.hp <= 0) {
+                monsters.splice(i, 1);
+                score += 10;
+              }
+            } else {
+              // hp가 없으면 기존 동작: 둘 다 제거
+              bullets.splice(j, 1);
+              monsters.splice(i, 1);
+              score += 10;
+            }
+            // 이 몬스터는 이미 처리했으므로 다음 몬스터로
             break;
           }
         }

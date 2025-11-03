@@ -22,9 +22,28 @@ const keysPressed = {};
 // 키보드 이벤트 처리: 키를 누르고 있는 동안 계속 이동하도록 처리
 document.addEventListener("keydown", function(e) {
   const allowed = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "w", "W", "s", "S"];
+  // 기존 이동키 처리
   if (allowed.includes(e.key)) {
     e.preventDefault();
     keysPressed[e.key] = true;
+  }
+  // 스페이스바: 한 번 눌렀을 때만 발동
+  if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar') {
+    e.preventDefault();
+    if (!keysPressed['Space']) {
+      keysPressed['Space'] = true;
+      // 스킬 사용 시 스킬 차감: useSkill()가 있으면 호출하여 성공할 때만 효과 발동
+      let used = true;
+      if (typeof useSkill === 'function') {
+        used = useSkill();
+      }
+      if (used) {
+        // 플레이어 전체 몬스터에 대미지 주는 함수 호출
+        if (typeof castGlobalDamage === 'function') castGlobalDamage(1000);
+      } else {
+        // 스킬이 없으면 아무 동작 안 함 (추후 피드백 추가 가능)
+      }
+    }
   }
 });
 
@@ -32,6 +51,9 @@ document.addEventListener("keyup", function(e) {
   const allowed = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "w", "W", "s", "S"];
   if (allowed.includes(e.key)) {
     keysPressed[e.key] = false;
+  }
+  if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar') {
+    keysPressed['Space'] = false;
   }
 });
 
@@ -180,7 +202,7 @@ function resetPlayerStatus() {
 // ------------------------------
 // bullets 배열과 관련 함수들을 player.js에서 관리합니다.
 const bullets = []; // {x, y, radius, vy}
-
+const BULLET_DAMAGE = 200;
 // 플레이어 위치에서 총알을 생성
 function spawnBullet() {
   if (typeof player === 'undefined') return;
@@ -221,4 +243,30 @@ function drawBullets() {
 // 총알 배열 얻기 (필요 시 외부에서 접근 가능)
 function getBullets() {
   return bullets;
+}
+
+// ------------------------------
+// 스페이스바 사용: 전체 몬스터에 피해를 주는 함수
+// ------------------------------
+function castGlobalDamage(damage = 1000) {
+  if (typeof monsters === 'undefined') return 0;
+  let killed = 0;
+  // 뒤에서부터 순회하며 hp 차감, hp <= 0이면 제거
+  for (let i = monsters.length - 1; i >= 0; i--) {
+    const m = monsters[i];
+    if (typeof m.hp === 'number') {
+      m.hp -= damage;
+      if (m.hp <= 0) {
+        monsters.splice(i, 1);
+        killed++;
+      }
+    } else {
+      // hp가 없다면 즉시 제거
+      monsters.splice(i, 1);
+      killed++;
+    }
+  }
+  // 스코어 처리: 전역 score 가 있으면 10점씩 증가
+  if (typeof score !== 'undefined' && killed > 0) score += 10 * killed;
+  return killed;
 }
