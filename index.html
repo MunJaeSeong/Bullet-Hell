@@ -8,7 +8,16 @@
         <link rel="stylesheet" href="css/style.css">
     </head>
     <body>
-        <canvas id="gameCanvas" width="400" height="500"></canvas>
+        <div id="layout" style="display:flex; align-items:flex-start; justify-content:center; gap:24px; padding:20px;">
+            <div id="canvasWrap" style="flex:0 0 auto;">
+                <canvas id="gameCanvas" width="400" height="500" style="margin:0; display:block;"></canvas>
+            </div>
+            <div id="controls" style="display:flex; flex-direction:column; gap:16px; align-items:flex-start; margin-left:20px;">
+                <button id="startButton">게임시작</button>
+                <button id="helpButton">게임설명</button>
+            </div>
+        </div>
+
         <script src="js/bullet-hell.js"></script>
     </body>
 </html>
