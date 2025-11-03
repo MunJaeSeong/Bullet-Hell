@@ -13,11 +13,10 @@ const ctx = canvas.getContext("2d");
 // 플레이어 설정
 // ========================================
 let player = {
-  x: 180,          // 플레이어의 x 좌표 (가로 위치)
-  y: 450,          // 플레이어의 y 좌표 (세로 위치, 화면 하단 근처)
-  width: 40,       // 플레이어의 너비 (픽셀)
-  height: 20,      // 플레이어의 높이 (픽셀)
-  speed: 5         // 플레이어의 이동 속도 (픽셀/키 입력)
+  x: 180,          // 플레이어의 x 좌표 (원 중심)
+  y: 450,          // 플레이어의 y 좌표 (원 중심, 화면 하단 근처)
+  radius: 5,      // 플레이어 반지름 (픽셀)
+  speed: 5         // 플레이어의 이동 속도 (픽셀/프레임)
 };
 
 // ========================================
@@ -32,12 +31,23 @@ let frameCount = 0;       // 프레임 카운터 (장애물 생성 주기 계산
 // ========================================
 // 키보드 입력 처리
 // ========================================
-// 키보드 이벤트 리스너: 화살표 키로 플레이어 이동
+// 키보드 이벤트 처리: 키를 누르고 있는 동안 계속 이동하도록 처리
+// 현재 누른 키 상태를 저장하는 객체
+const keysPressed = {};
+
+// 키 누름: 상태를 true로 설정하고 기본 동작(스크롤 등)을 막음
 document.addEventListener("keydown", function(e) {
-  // 왼쪽 화살표 키: 플레이어를 왼쪽으로 이동
-  if (e.key === "ArrowLeft") player.x -= player.speed;
-  // 오른쪽 화살표 키: 플레이어를 오른쪽으로 이동
-  if (e.key === "ArrowRight") player.x += player.speed;
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    e.preventDefault();
+    keysPressed[e.key] = true;
+  }
+});
+
+// 키 뗌: 상태를 false로 설정
+document.addEventListener("keyup", function(e) {
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    keysPressed[e.key] = false;
+  }
 });
 
 // ========================================
@@ -45,7 +55,9 @@ document.addEventListener("keydown", function(e) {
 // ========================================
 function drawPlayer() {
   ctx.fillStyle = "black";  // 플레이어 색상: 검은색
-  ctx.fillRect(player.x, player.y, player.width, player.height);
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 // ========================================
@@ -95,13 +107,32 @@ function generateObstacle() {
 // ========================================
 // 충돌 감지 함수 (AABB 충돌 검사 : Axis-Aligned Bounding Box (축에 정렬된 경계 상자))
 // ========================================
-// 두 사각형이 겹치는지 확인하는 함수
-function checkCollision(rect1, rect2) {
-  return rect1.x < rect2.x + rect2.width &&      // rect1의 왼쪽이 rect2의 오른쪽보다 왼쪽에 있고
-         rect1.x + rect1.width > rect2.x &&      // rect1의 오른쪽이 rect2의 왼쪽보다 오른쪽에 있고
-         rect1.y < rect2.y + rect2.height &&     // rect1의 위쪽이 rect2의 아래쪽보다 위에 있고
-         rect1.y + rect1.height > rect2.y;       // rect1의 아래쪽이 rect2의 위쪽보다 아래에 있으면
-  // 위 4가지 조건이 모두 참이면 두 사각형이 겹침 (충돌)
+// 충돌 검사: 두 직사각형(AABB) 또는 원-직사각(circle-rect)을 지원
+function checkCollision(a, b) {
+  // a가 원(circle)인 경우: 원-사각 충돌 검사
+  if (a.radius !== undefined) {
+    // 직사각형 b의 가장 가까운 점을 원 중심에 대해 계산
+    const closestX = Math.max(b.x, Math.min(a.x, b.x + b.width));
+    const closestY = Math.max(b.y, Math.min(a.y, b.y + b.height));
+    const dx = a.x - closestX;
+    const dy = a.y - closestY;
+    return dx * dx + dy * dy <= a.radius * a.radius;
+  }
+
+  // b가 원(circle)인 경우: 원-사각 충돌 검사 (역순)
+  if (b.radius !== undefined) {
+    const closestX = Math.max(a.x, Math.min(b.x, a.x + a.width));
+    const closestY = Math.max(a.y, Math.min(b.y, a.y + a.height));
+    const dx = b.x - closestX;
+    const dy = b.y - closestY;
+    return dx * dx + dy * dy <= b.radius * b.radius;
+  }
+
+  // 기본: 직사각형-직사각형 충돌 검사 (AABB)
+  return a.x < b.x + b.width &&
+         a.x + a.width > b.x &&
+         a.y < b.y + b.height &&
+         a.y + a.height > b.y;
 }
 
 // ========================================
@@ -112,6 +143,14 @@ function update() {
 
   // 이전 프레임의 그림을 모두 지움 (캔버스 전체를 투명하게)
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 키가 눌려있는 동안 프레임마다 플레이어 이동 처리
+  if (keysPressed["ArrowLeft"]) player.x -= player.speed;
+  if (keysPressed["ArrowRight"]) player.x += player.speed;
+
+  // 플레이어가 캔버스 밖으로 나가지 않도록 반지름 기준으로 범위 제한 (player.x는 중심)
+  if (player.x < player.radius) player.x = player.radius;
+  if (player.x > canvas.width - player.radius) player.x = canvas.width - player.radius;
 
   // 게임 요소 그리기
   drawPlayer();      // 플레이어 그리기
